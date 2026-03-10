@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { font-family: 'Source Sans Pro', Ubuntu, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { @apply bg-white text-scp-gray; }
+}
+
+@layer components {
+  .btn-primary { @apply bg-scp-green text-scp-navy font-semibold px-6 py-2.5 rounded transition-all duration-200 hover:bg-scp-green-dark hover:text-white disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-secondary { @apply bg-scp-blue text-white font-semibold px-6 py-2.5 rounded transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-ghost { @apply text-scp-navy font-semibold px-6 py-2.5 rounded border border-scp-gray-cool transition-all duration-200 hover:bg-scp-navy-tint; }
+  .card { @apply bg-white rounded-lg shadow-card border border-scp-gray-warm p-6; }
+  .card-tint { @apply bg-scp-navy-tint rounded-lg border border-scp-gray-cool p-6; }
+  .input-field { @apply w-full border border-scp-gray-cool rounded px-4 py-2.5 text-scp-gray focus:outline-none focus:ring-2 focus:ring-scp-blue focus:border-transparent transition-all; }
+  .label { @apply block text-sm font-semibold text-scp-navy mb-1; }
+  .section-title { @apply text-scp-navy font-bold text-xl mb-1; }
+  .badge-green { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-scp-green text-scp-navy; }
+  .badge-blue { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-scp-blue text-white; }
+  .badge-gray { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-scp-gray-cool text-scp-gray; }
+}
