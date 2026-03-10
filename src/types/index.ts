@@ -10,10 +10,10 @@ export interface UserProfile {
 // ── Analysis ─────────────────────────────────────────────────────────────────
 export interface SpeakerScore {
   name: string
-  share_of_voice: number        // 0–100 percent
-  clarity_score: number         // 0–100
-  topic_leadership: number      // 0–100
-  conciseness: number           // 0–100
+  share_of_voice: number
+  clarity_score: number
+  topic_leadership: number
+  conciseness: number
   pacing: 'slow' | 'good' | 'fast'
   word_count: number
   tips: string[]
@@ -30,7 +30,7 @@ export interface AnalysisResult {
   speakers: SpeakerScore[]
   topics: TopicCoverage[]
   overall_summary: string
-  meeting_effectiveness: number  // 0–100
+  meeting_effectiveness: number
 }
 
 export interface Analysis {
@@ -38,12 +38,12 @@ export interface Analysis {
   user_id: string
   meeting_name: string
   meeting_date: string
-  transcript_preview: string     // first 200 chars only, for history list
+  transcript_preview: string
   scores: AnalysisResult
+  self_speaker_name: string | null
   created_at: string
 }
 
-// ── API ──────────────────────────────────────────────────────────────────────
 export interface AnalyzeRequest {
   transcript: string
   meeting_name: string
@@ -56,9 +56,6 @@ export interface AnalyzeResponse {
   error?: string
 }
 
-export interface HealthResponse {
-  status: 'ok'
-  timestamp: string
-  supabase: 'connected' | 'not configured'
-  claude: 'configured' | 'not configured'
-}
+export type SpeakerIdentityResult =
+  | { matched: true; speakerName: string }
+  | { matched: false; candidates: string[] }

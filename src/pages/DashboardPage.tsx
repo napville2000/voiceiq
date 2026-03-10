@@ -63,16 +63,21 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Scaffold status banner */}
-        <div className="card-tint border-l-4 border-scp-green">
-          <div className="flex items-start gap-3">
-            <span className="text-scp-green text-lg mt-0.5">✓</span>
-            <div>
-              <h3 className="text-scp-navy font-bold text-sm">Scaffold Status — Authentication Working</h3>
-              <p className="text-scp-gray text-sm mt-1">
-                You're logged in as <strong>{profile?.email}</strong> with role <strong>{profile?.role}</strong>.
-                Supabase auth is connected. Next step: wire up the analyze endpoint and history storage.
-              </p>
+        {/* How it works */}
+        <div className="card-tint">
+          <h3 className="text-scp-navy font-bold text-sm mb-3">How VoiceIQ Works</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-scp-gray">
+            <div className="flex gap-3">
+              <span className="text-scp-green font-bold text-base flex-shrink-0">1.</span>
+              <p>Paste a meeting transcript from Teams, Zoom, or Otter into the Analyze page.</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-scp-green font-bold text-base flex-shrink-0">2.</span>
+              <p>Claude analyzes speaker clarity, topic leadership, conciseness, and pacing.</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-scp-green font-bold text-base flex-shrink-0">3.</span>
+              <p>Your personal scores are saved to History so you can track improvement over time.</p>
             </div>
           </div>
         </div>
