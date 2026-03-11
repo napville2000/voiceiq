@@ -8,6 +8,15 @@ export interface UserProfile {
 }
 
 // ── Analysis ─────────────────────────────────────────────────────────────────
+export interface SpeakerTip {
+  summary: string
+  observation: string
+  before: string
+  after: string
+  priority: 'high' | 'medium'
+  effort: 'easy' | 'hard'
+}
+
 export interface SpeakerScore {
   name: string
   share_of_voice: number
@@ -16,7 +25,7 @@ export interface SpeakerScore {
   conciseness: number
   pacing: 'slow' | 'good' | 'fast'
   word_count: number
-  tips: string[]
+  tips: SpeakerTip[]
 }
 
 export interface TopicCoverage {
@@ -44,15 +53,16 @@ export interface Analysis {
   created_at: string
 }
 
-export interface AnalyzeRequest {
-  transcript: string
-  meeting_name: string
-  meeting_date: string
-}
-
+// ── API ──────────────────────────────────────────────────────────────────────
 export interface AnalyzeResponse {
   success: boolean
   data?: AnalysisResult
+  error?: string
+}
+
+export interface ExplainResponse {
+  success: boolean
+  explanation?: string
   error?: string
 }
 

@@ -1,8 +1,22 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
+// Detects whether a name looks like an auto-generated email prefix
+// e.g. "sarah.m", "zachary_roberts", "jsmith" — no spaces, has dots/underscores, or all lowercase single word
+function nameNeedsSetup(fullName: string): boolean {
+  if (!fullName) return true
+  const trimmed = fullName.trim()
+  // Has a space = likely a real name ("Zach Roberts")
+  if (trimmed.includes(' ')) return false
+  // Contains dot or underscore = email prefix pattern
+  if (trimmed.includes('.') || trimmed.includes('_')) return true
+  // All lowercase single word with no space = probably email prefix
+  if (trimmed === trimmed.toLowerCase()) return true
+  return false
+}
+
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth()
+  const { session, profile, loading } = useAuth()
 
   if (loading) {
     return (
@@ -15,8 +29,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!session) {
-    return <Navigate to="/login" replace />
+  if (!session) return <Navigate to="/login" replace />
+
+  // Profile loaded and name looks like an email prefix → first-time setup
+  if (profile && nameNeedsSetup(profile.full_name)) {
+    return <Navigate to="/setup" replace />
   }
 
   return <>{children}</>
