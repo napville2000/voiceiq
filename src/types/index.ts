@@ -48,15 +48,17 @@ export interface Analysis {
   meeting_name: string
   meeting_date: string
   transcript_preview: string
-  scores: AnalysisResult
+  scores: AnalysisResult | null
   self_speaker_name: string | null
+  status: 'processing' | 'complete' | 'failed'
+  error_message: string | null
   created_at: string
 }
 
 // ── API ──────────────────────────────────────────────────────────────────────
-export interface AnalyzeResponse {
+export interface AnalyzeStartResponse {
   success: boolean
-  data?: AnalysisResult
+  analysisId?: string
   error?: string
 }
 

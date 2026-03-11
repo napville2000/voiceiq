@@ -1,10 +1,32 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { NavBar } from '../components/NavBar'
+import { supabase } from '../lib/supabase'
+import type { Analysis } from '../types'
 
 export function DashboardPage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
+  const navigate = useNavigate()
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
+  const [processingJob, setProcessingJob] = useState<Analysis | null>(null)
+  const [checking, setChecking] = useState(true)
+
+  // Check for any in-progress or recently failed jobs on mount
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('analyses')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['processing', 'failed'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data?.[0]) setProcessingJob(data[0] as Analysis)
+        setChecking(false)
+      })
+  }, [user])
 
   return (
     <div className="min-h-screen bg-scp-navy-tint">
@@ -21,6 +43,50 @@ export function DashboardPage() {
             Your communication intelligence hub — ready when you are.
           </p>
         </div>
+
+        {/* In-progress / failed job banner */}
+        {!checking && processingJob && (
+          <div className={`rounded-lg px-5 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap ${
+            processingJob.status === 'processing'
+              ? 'bg-blue-50 border border-blue-200'
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {processingJob.status === 'processing' ? (
+                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              ) : (
+                <span className="text-red-500 text-lg flex-shrink-0">!</span>
+              )}
+              <div>
+                <p className={`font-semibold text-sm ${processingJob.status === 'processing' ? 'text-blue-800' : 'text-red-800'}`}>
+                  {processingJob.status === 'processing'
+                    ? `Analysis in progress: "${processingJob.meeting_name}"`
+                    : `Analysis failed: "${processingJob.meeting_name}"`}
+                </p>
+                <p className={`text-xs mt-0.5 ${processingJob.status === 'processing' ? 'text-blue-600' : 'text-red-600'}`}>
+                  {processingJob.status === 'processing'
+                    ? 'Claude is still working on this. Results will appear in your history when complete.'
+                    : processingJob.error_message ?? 'Something went wrong during analysis.'}
+                </p>
+              </div>
+            </div>
+            {processingJob.status === 'processing' ? (
+              <Link
+                to="/analyze"
+                className="text-blue-700 text-sm font-semibold hover:underline flex-shrink-0"
+              >
+                View progress →
+              </Link>
+            ) : (
+              <button
+                onClick={() => navigate('/analyze')}
+                className="text-red-700 text-sm font-semibold hover:underline flex-shrink-0"
+              >
+                Retry →
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Quick actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
