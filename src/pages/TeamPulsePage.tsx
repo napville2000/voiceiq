@@ -71,14 +71,14 @@ export function TeamPulsePage() {
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
         const selfScores = mine.map(a => {
-          const s = a.scores.speakers.find(sp => sp.name === a.self_speaker_name)
+          const s = a.scores?.speakers.find(sp => sp.name === a.self_speaker_name)
           return s ?? null
         }).filter(Boolean)
 
         const avgC = avg(selfScores.map(s => s!.clarity_score))
         const avgL = avg(selfScores.map(s => s!.topic_leadership))
         const avgCon = avg(selfScores.map(s => s!.conciseness))
-        const avgEff = avg(mine.map(a => a.scores.meeting_effectiveness))
+        const avgEff = avg(mine.map(a => a.scores?.meeting_effectiveness ?? 0))
 
         // Trend: compare latest vs previous clarity
         let trend: MemberSummary['trend'] = 'new'

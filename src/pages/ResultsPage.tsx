@@ -18,38 +18,17 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 }
 
 function QualityBadge({ quality }: { quality: 'strong' | 'partial' | 'weak' }) {
-  const map = {
-    strong: 'bg-green-100 text-green-800',
-    partial: 'bg-orange-100 text-orange-800',
-    weak: 'bg-red-100 text-red-800',
-  }
-  return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${map[quality]}`}>
-      {quality}
-    </span>
-  )
+  const map = { strong: 'bg-green-100 text-green-800', partial: 'bg-orange-100 text-orange-800', weak: 'bg-red-100 text-red-800' }
+  return <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${map[quality]}`}>{quality}</span>
 }
 
-function SpeakerCard({
-  speaker,
-  isSelf,
-  avatarColor,
-  meetingName,
-}: {
-  speaker: SpeakerScore
-  isSelf: boolean
-  avatarColor: string
-  meetingName: string
+function SpeakerCard({ speaker, isSelf, avatarColor, meetingName }: {
+  speaker: SpeakerScore; isSelf: boolean; avatarColor: string; meetingName: string
 }) {
-  const pacingColor = {
-    good: 'bg-green-100 text-green-800',
-    slow: 'bg-blue-100 text-blue-800',
-    fast: 'bg-orange-100 text-orange-800',
-  }[speaker.pacing]
+  const pacingColor = { good: 'bg-green-100 text-green-800', slow: 'bg-blue-100 text-blue-800', fast: 'bg-orange-100 text-orange-800' }[speaker.pacing]
 
   return (
     <div className={`card overflow-hidden ${isSelf ? 'ring-2 ring-scp-green' : ''}`}>
-      {/* Header */}
       <div className="bg-scp-navy-tint border-b border-scp-gray-warm px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-11 h-11 rounded-full ${avatarColor} text-white flex items-center justify-center font-bold text-lg flex-shrink-0`}>
@@ -68,39 +47,23 @@ function SpeakerCard({
         </span>
       </div>
 
-      {/* Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-scp-gray-warm border-b border-scp-gray-warm">
-        <div className="px-5 py-4">
-          <div className="flex items-center text-scp-gray-mid text-xs font-semibold uppercase tracking-wide">
-            Clarity <MetricTooltip metricKey="clarity" />
+        {[
+          { label: 'Clarity', value: speaker.clarity_score, color: 'bg-scp-green', tooltip: 'clarity' as const },
+          { label: 'Topic Leadership', value: speaker.topic_leadership, color: 'bg-scp-cyan', tooltip: 'topic_leadership' as const },
+          { label: 'Conciseness', value: speaker.conciseness, color: 'bg-scp-blue', tooltip: 'conciseness' as const },
+          { label: 'Share of Voice', value: speaker.share_of_voice, color: 'bg-scp-green-dark', tooltip: 'share_of_voice' as const, suffix: '%' },
+        ].map(({ label, value, color, tooltip, suffix }) => (
+          <div key={label} className="px-5 py-4">
+            <div className="flex items-center text-scp-gray-mid text-xs font-semibold uppercase tracking-wide">
+              {label} <MetricTooltip metricKey={tooltip} />
+            </div>
+            <div className="text-scp-navy font-bold text-2xl mt-1">{value}{suffix ?? ''}</div>
+            <ScoreBar value={value} color={color} />
           </div>
-          <div className="text-scp-navy font-bold text-2xl mt-1">{speaker.clarity_score}</div>
-          <ScoreBar value={speaker.clarity_score} color="bg-scp-green" />
-        </div>
-        <div className="px-5 py-4">
-          <div className="flex items-center text-scp-gray-mid text-xs font-semibold uppercase tracking-wide">
-            Topic Leadership <MetricTooltip metricKey="topic_leadership" />
-          </div>
-          <div className="text-scp-navy font-bold text-2xl mt-1">{speaker.topic_leadership}</div>
-          <ScoreBar value={speaker.topic_leadership} color="bg-scp-cyan" />
-        </div>
-        <div className="px-5 py-4">
-          <div className="flex items-center text-scp-gray-mid text-xs font-semibold uppercase tracking-wide">
-            Conciseness <MetricTooltip metricKey="conciseness" />
-          </div>
-          <div className="text-scp-navy font-bold text-2xl mt-1">{speaker.conciseness}</div>
-          <ScoreBar value={speaker.conciseness} color="bg-scp-blue" />
-        </div>
-        <div className="px-5 py-4">
-          <div className="flex items-center text-scp-gray-mid text-xs font-semibold uppercase tracking-wide">
-            Share of Voice <MetricTooltip metricKey="share_of_voice" />
-          </div>
-          <div className="text-scp-navy font-bold text-2xl mt-1">{speaker.share_of_voice}%</div>
-          <ScoreBar value={speaker.share_of_voice} color="bg-scp-green-dark" />
-        </div>
+        ))}
       </div>
 
-      {/* SOV bar */}
       <div className="px-6 py-3 border-b border-scp-gray-warm">
         <div className="flex justify-between text-xs text-scp-gray-mid mb-1.5">
           <span className="font-semibold uppercase tracking-wide">Share of Voice</span>
@@ -111,7 +74,6 @@ function SpeakerCard({
         </div>
       </div>
 
-      {/* Tips */}
       <div className="px-6 py-4">
         <p className="text-scp-navy font-bold text-xs uppercase tracking-wide mb-3">
           💡 Coaching Tips for {speaker.name.split(' ')[0]}
@@ -119,7 +81,6 @@ function SpeakerCard({
         <div className="space-y-2">
           {Array.isArray(speaker.tips) && speaker.tips.map((tip, i) => (
             typeof tip === 'string' ? (
-              // Backwards compat: old string-format tips
               <div key={i} className="flex gap-2.5 bg-scp-navy-tint rounded-lg px-3 py-2.5 border-l-2 border-scp-green">
                 <span className="text-scp-green-dark text-xs mt-0.5 flex-shrink-0">→</span>
                 <p className="text-scp-gray text-sm leading-relaxed">{tip}</p>
@@ -143,11 +104,7 @@ export function ResultsPage() {
 
   useEffect(() => {
     if (!id) return
-    supabase
-      .from('analyses')
-      .select('*')
-      .eq('id', id)
-      .single()
+    supabase.from('analyses').select('*').eq('id', id).single()
       .then(({ data }) => {
         if (data) setAnalysis(data as Analysis)
         setLoading(false)
@@ -165,12 +122,18 @@ export function ResultsPage() {
     )
   }
 
-  if (!analysis) {
+  if (!analysis || !analysis.scores) {
     return (
       <div className="min-h-screen bg-scp-navy-tint">
         <NavBar />
         <main className="max-w-4xl mx-auto px-4 py-16 text-center">
-          <p className="text-scp-navy font-bold text-lg mb-2">Analysis not found</p>
+          <p className="text-scp-navy font-bold text-lg mb-2">
+            {analysis?.status === 'processing' ? 'Analysis still in progress...' : 'Analysis not found'}
+          </p>
+          {analysis?.status === 'processing' && (
+            <p className="text-scp-gray text-sm mb-4">Check back in a moment — Claude is still working on this.</p>
+          )}
+          <Link to="/history" className="btn-ghost inline-block mt-4 mr-3">View History</Link>
           <Link to="/analyze" className="btn-primary inline-block mt-4">New Analysis</Link>
         </main>
       </div>
@@ -186,7 +149,6 @@ export function ResultsPage() {
     : scores.speakers
 
   const activeScore = orderedSpeakers[activeSpeakerIdx] ?? orderedSpeakers[0]
-
   const circumference = 220
   const offset = circumference - (circumference * scores.meeting_effectiveness) / 100
 
@@ -196,16 +158,13 @@ export function ResultsPage() {
       <MethodologyDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-scp-navy font-bold text-2xl">{analysis.meeting_name}</h1>
             <p className="text-scp-gray-mid text-sm mt-1">
               {analysis.meeting_date}
-              <span className="mx-2 text-scp-gray-cool">·</span>
-              {scores.speakers.length} speakers
-              <span className="mx-2 text-scp-gray-cool">·</span>
-              {scores.topics.length} topics
+              <span className="mx-2 text-scp-gray-cool">·</span>{scores.speakers.length} speakers
+              <span className="mx-2 text-scp-gray-cool">·</span>{scores.topics.length} topics
               {isObserver && <><span className="mx-2 text-scp-gray-cool">·</span><span className="italic">Observer record</span></>}
             </p>
           </div>
@@ -239,7 +198,6 @@ export function ResultsPage() {
           </div>
         </div>
 
-        {/* Action bar */}
         <div className="flex gap-3 flex-wrap">
           <Link to="/analyze" className="btn-ghost text-sm py-2 px-4">← New Analysis</Link>
           <Link to="/history" className="btn-ghost text-sm py-2 px-4">View History</Link>
@@ -252,25 +210,18 @@ export function ResultsPage() {
           </h2>
           <div className="flex gap-2 mb-4 flex-wrap">
             {orderedSpeakers.map((s, i) => (
-              <button
-                key={s.name}
-                onClick={() => setActiveSpeakerIdx(i)}
+              <button key={s.name} onClick={() => setActiveSpeakerIdx(i)}
                 className={`px-4 py-2 rounded-md border-2 text-sm font-semibold transition-all ${
                   activeSpeakerIdx === i
                     ? 'border-scp-navy bg-scp-navy text-white'
                     : 'border-scp-gray-cool bg-white text-scp-gray-mid hover:border-scp-blue hover:text-scp-blue'
-                }`}
-              >
+                }`}>
                 {s.name === selfName ? `${s.name} (You)` : s.name}
               </button>
             ))}
           </div>
-          <SpeakerCard
-            speaker={activeScore}
-            isSelf={activeScore.name === selfName}
-            avatarColor={AVATAR_COLORS[activeSpeakerIdx % AVATAR_COLORS.length]}
-            meetingName={analysis.meeting_name}
-          />
+          <SpeakerCard speaker={activeScore} isSelf={activeScore.name === selfName}
+            avatarColor={AVATAR_COLORS[activeSpeakerIdx % AVATAR_COLORS.length]} meetingName={analysis.meeting_name} />
         </div>
 
         {/* Topic coverage */}

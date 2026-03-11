@@ -13,9 +13,7 @@ function TrendBar({ values, color }: { values: number[]; color: string }) {
       {values.map((v, i) => (
         <div
           key={i}
-          className={`flex-1 rounded-t-sm transition-all duration-500 ${
-            i === values.length - 1 ? color : 'bg-scp-gray-cool'
-          }`}
+          className={`flex-1 rounded-t-sm transition-all duration-500 ${i === values.length - 1 ? color : 'bg-scp-gray-cool'}`}
           style={{ height: `${(v / max) * 100}%`, minHeight: 4 }}
         />
       ))}
@@ -34,6 +32,7 @@ export function HistoryPage() {
       .from('analyses')
       .select('*')
       .eq('user_id', user.id)
+      .eq('status', 'complete')
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => {
@@ -42,18 +41,17 @@ export function HistoryPage() {
       })
   }, [user])
 
-  // Personal analyses only (where self_speaker_name is set)
-  const personal = analyses.filter(a => a.self_speaker_name !== null)
-  const observer = analyses.filter(a => a.self_speaker_name === null)
+  // Only complete analyses with scores and self_speaker_name
+  const personal = analyses.filter(a => a.self_speaker_name !== null && a.scores !== null)
+  const observer = analyses.filter(a => a.self_speaker_name === null && a.scores !== null)
 
-  // Build trend data from personal records (oldest first → newest last)
   const chronological = [...personal].reverse()
 
   function getTrend(key: 'clarity_score' | 'topic_leadership' | 'conciseness') {
     return chronological.map(a => {
-      const self = a.scores.speakers.find(s => s.name === a.self_speaker_name)
+      const self = a.scores?.speakers.find(s => s.name === a.self_speaker_name)
       return self?.[key] ?? 0
-    }).slice(-5) // last 5 sessions
+    }).slice(-5)
   }
 
   const clarityTrend = getTrend('clarity_score')
@@ -61,9 +59,9 @@ export function HistoryPage() {
   const concisenessTrend = getTrend('conciseness')
 
   const latest = personal[0]
-  const selfLatest = latest?.scores.speakers.find(s => s.name === latest.self_speaker_name)
+  const selfLatest = latest?.scores?.speakers.find(s => s.name === latest.self_speaker_name)
   const prev = personal[1]
-  const selfPrev = prev?.scores.speakers.find(s => s.name === prev.self_speaker_name)
+  const selfPrev = prev?.scores?.speakers.find(s => s.name === prev.self_speaker_name)
 
   function delta(key: 'clarity_score' | 'topic_leadership' | 'conciseness') {
     if (!selfLatest || !selfPrev) return null
@@ -73,7 +71,6 @@ export function HistoryPage() {
   return (
     <div className="min-h-screen bg-scp-navy-tint">
       <NavBar />
-
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         <div>
           <h1 className="section-title text-2xl">My History</h1>
@@ -88,9 +85,7 @@ export function HistoryPage() {
         ) : personal.length === 0 ? (
           <div className="card text-center py-12">
             <p className="text-scp-navy font-semibold text-lg mb-2">No personal analyses yet</p>
-            <p className="text-scp-gray text-sm mb-4">
-              Run your first analysis to start tracking your communication growth.
-            </p>
+            <p className="text-scp-gray text-sm mb-4">Run your first analysis to start tracking your communication growth.</p>
             <Link to="/analyze" className="btn-primary inline-block">Analyze a Meeting</Link>
           </div>
         ) : (
@@ -109,8 +104,8 @@ export function HistoryPage() {
                   { label: 'Conciseness', key: 'conciseness' as const, trend: concisenessTrend, color: 'bg-scp-blue', tooltip: 'conciseness' as const },
                 ].map(({ label, key, trend, color, tooltip }) => {
                   const d = delta(key)
-                  const latest = trend[trend.length - 1]
-                  const prev = trend[trend.length - 2]
+                  const latestVal = trend[trend.length - 1]
+                  const prevVal = trend[trend.length - 2]
                   return (
                     <div key={key} className="card">
                       <div className="flex items-center gap-1 text-scp-gray-mid text-xs font-semibold uppercase tracking-wide mb-3">
@@ -119,15 +114,11 @@ export function HistoryPage() {
                       {trend.length > 0 && <TrendBar values={trend} color={color} />}
                       <div className="flex items-end justify-between mt-2">
                         <div>
-                          <span className="text-scp-navy font-bold text-2xl">{latest ?? '–'}</span>
-                          {prev !== undefined && (
-                            <span className="text-scp-gray-mid text-xs ml-1">was {prev}</span>
-                          )}
+                          <span className="text-scp-navy font-bold text-2xl">{latestVal ?? '–'}</span>
+                          {prevVal !== undefined && <span className="text-scp-gray-mid text-xs ml-1">was {prevVal}</span>}
                         </div>
                         {d !== null && (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            d > 0 ? 'bg-green-100 text-green-800' : d < 0 ? 'bg-red-100 text-red-800' : 'bg-scp-gray-cool text-scp-gray'
-                          }`}>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${d > 0 ? 'bg-green-100 text-green-800' : d < 0 ? 'bg-red-100 text-red-800' : 'bg-scp-gray-cool text-scp-gray'}`}>
                             {d > 0 ? `↑ +${d}` : d < 0 ? `↓ ${d}` : '→ 0'}
                           </span>
                         )}
@@ -141,18 +132,14 @@ export function HistoryPage() {
             {/* Personal session list */}
             <div>
               <h2 className="text-scp-navy font-bold text-base mb-3 flex items-center gap-2">
-                Session Records
-                <span className="h-px flex-1 bg-scp-gray-cool" />
+                Session Records <span className="h-px flex-1 bg-scp-gray-cool" />
               </h2>
               <div className="space-y-2">
                 {personal.map(a => {
-                  const selfScore = a.scores.speakers.find(s => s.name === a.self_speaker_name)
+                  const selfScore = a.scores?.speakers.find(s => s.name === a.self_speaker_name)
                   return (
-                    <Link
-                      key={a.id}
-                      to={`/results/${a.id}`}
-                      className="card hover:shadow-card-hover transition-shadow flex items-center justify-between gap-4 p-4 group"
-                    >
+                    <Link key={a.id} to={`/results/${a.id}`}
+                      className="card hover:shadow-card-hover transition-shadow flex items-center justify-between gap-4 p-4 group">
                       <div className="flex-1 min-w-0">
                         <p className="text-scp-navy font-semibold group-hover:text-scp-blue transition-colors truncate">{a.meeting_name}</p>
                         <p className="text-scp-gray-mid text-xs mt-0.5">{a.meeting_date}</p>
@@ -171,7 +158,7 @@ export function HistoryPage() {
                           </>
                         )}
                         <div className="text-center">
-                          <div className="badge-green">{a.scores.meeting_effectiveness}</div>
+                          <div className="badge-green">{a.scores?.meeting_effectiveness ?? '–'}</div>
                           <div className="text-scp-gray-mid text-xs mt-0.5">Score</div>
                         </div>
                       </div>
@@ -192,16 +179,13 @@ export function HistoryPage() {
                 </h2>
                 <div className="space-y-2">
                   {observer.map(a => (
-                    <Link
-                      key={a.id}
-                      to={`/results/${a.id}`}
-                      className="card hover:shadow-card-hover transition-shadow flex items-center justify-between gap-4 p-4 group opacity-75"
-                    >
+                    <Link key={a.id} to={`/results/${a.id}`}
+                      className="card hover:shadow-card-hover transition-shadow flex items-center justify-between gap-4 p-4 group opacity-75">
                       <div className="flex-1 min-w-0">
                         <p className="text-scp-navy font-semibold group-hover:text-scp-blue transition-colors truncate">{a.meeting_name}</p>
                         <p className="text-scp-gray-mid text-xs mt-0.5">{a.meeting_date} · Observer</p>
                       </div>
-                      <div className="badge-gray">{a.scores.meeting_effectiveness} eff.</div>
+                      <div className="badge-gray">{a.scores?.meeting_effectiveness ?? '–'} eff.</div>
                       <span className="text-scp-gray-cool group-hover:text-scp-blue transition-colors">→</span>
                     </Link>
                   ))}
