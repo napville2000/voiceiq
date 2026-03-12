@@ -57,7 +57,8 @@ export const handler: Handler = async (event) => {
   const analysisId = data.id
 
   // Fire the background function — don't await it
-  const bgUrl = `${process.env.URL}/.netlify/functions/analyze-bg`
+  const siteUrl = process.env.SITE_URL ?? process.env.DEPLOY_URL ?? 'https://voiceiq-napville2000.netlify.app'
+  const bgUrl = `${siteUrl}/.netlify/functions/analyze-bg`
   fetch(bgUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
