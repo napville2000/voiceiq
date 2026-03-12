@@ -161,7 +161,7 @@ export function AnalyzePage() {
       .eq('id', analysisId)
 
     // Re-fire background function
-    await fetch('/.netlify/functions/analyze-bg', {
+    await fetch('/.netlify/functions/analyze-start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

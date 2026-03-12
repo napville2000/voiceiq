@@ -1,11 +1,11 @@
+// Synchronous function — must complete in under 10 seconds
+// Responsibilities:
+//   1. Validate request
+//   2. Store full transcript + metadata in Supabase (status: processing)
+//   3. Invoke analyze-background with ONLY the analysis ID (tiny payload — avoids 256KB bg function limit)
+//   4. Return analysis ID to frontend immediately
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
-
-// This function:
-// 1. Validates the request
-// 2. Creates a 'processing' row in Supabase
-// 3. Fires the background function
-// 4. Returns the analysis ID immediately (< 1s)
 
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -28,13 +28,12 @@ export const handler: Handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ success: false, error: 'user_id required' }) }
   }
 
-  // Init Supabase with service role key (server-side only — bypasses RLS for insert)
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Create the pending analysis row
+  // Store full transcript in Supabase — background function will read and clear it
   const { data, error } = await supabase
     .from('analyses')
     .insert({
@@ -42,6 +41,7 @@ export const handler: Handler = async (event) => {
       meeting_name: meeting_name || 'Untitled Meeting',
       meeting_date: meeting_date || new Date().toISOString().split('T')[0],
       transcript_preview: transcript.slice(0, 200),
+      full_transcript: transcript,
       scores: null,
       self_speaker_name: self_speaker_name ?? null,
       status: 'processing',
@@ -56,14 +56,14 @@ export const handler: Handler = async (event) => {
 
   const analysisId = data.id
 
-  // Fire the background function — don't await it
-  const siteUrl = process.env.SITE_URL ?? process.env.DEPLOY_URL ?? 'https://voiceiq-napville2000.netlify.app'
-  const bgUrl = `${siteUrl}/.netlify/functions/analyze-bg`
+  // Invoke background function with only the analysis ID — well under 256KB limit
+  const bgUrl = `${event.headers['x-forwarded-proto'] ?? 'https'}://${event.headers['host']}/.netlify/functions/analyze-background`
+  
   fetch(bgUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ analysis_id: analysisId, transcript, meeting_name, meeting_date }),
-  }).catch(err => console.error('[analyze-start] Failed to trigger bg function:', err))
+    body: JSON.stringify({ analysis_id: analysisId }),
+  }).catch(err => console.error('[analyze-start] Failed to invoke background function:', err))
 
   return {
     statusCode: 200,
