@@ -36,7 +36,7 @@ export function TipCard({ tip, speakerName, meetingName }: TipCardProps) {
     setError(null)
 
     try {
-      const res = await fetch('/.netlify/functions/analyze', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

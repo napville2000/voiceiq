@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/analyze.ts": {
+      "maxDuration": 60
+    }
+  },
+  "fluid": true
+}
+

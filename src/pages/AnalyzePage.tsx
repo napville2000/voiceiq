@@ -1,18 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NavBar } from '../components/NavBar'
 import { SpeakerIdentityModal } from '../components/SpeakerIdentityModal'
 import { useAuth } from '../hooks/useAuth'
-import { supabase } from '../lib/supabase'
 import { matchSpeakerToUser } from '../lib/speakerMatch'
-import type { AnalyzeStartResponse, Analysis } from '../types'
+import type { AnalyzeStartResponse } from '../types'
 
 type Step = 'form' | 'submitting' | 'identity' | 'processing' | 'error'
-
-// Staleness threshold — jobs older than 5 min still processing = failed
-const STALE_MS = 5 * 60 * 1000
-const POLL_INTERVAL_MS = 2000
 
 export function AnalyzePage() {
   const { user, profile } = useAuth()
@@ -23,58 +18,12 @@ export function AnalyzePage() {
   const [meetingDate, setMeetingDate] = useState(new Date().toISOString().split('T')[0])
   const [step, setStep] = useState<Step>('form')
   const [error, setError] = useState<string | null>(null)
-  const [analysisId, setAnalysisId] = useState<string | null>(null)
-  const [pollCount, setPollCount] = useState(0)
 
   // Pending state for identity modal
   const [pendingSpeakers, setPendingSpeakers] = useState<string[]>([])
   const pendingTranscript = useRef('')
   const pendingMeetingName = useRef('')
   const pendingMeetingDate = useRef('')
-
-  // ── Polling ──────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (step !== 'processing' || !analysisId) return
-
-    const interval = setInterval(async () => {
-      setPollCount(c => c + 1)
-
-      const { data } = await supabase
-        .from('analyses')
-        .select('id, status, error_message, scores, created_at')
-        .eq('id', analysisId)
-        .single()
-
-      if (!data) return
-
-      const analysis = data as Analysis
-
-      if (analysis.status === 'complete' && analysis.scores) {
-        clearInterval(interval)
-        navigate(`/results/${analysisId}`)
-        return
-      }
-
-      if (analysis.status === 'failed') {
-        clearInterval(interval)
-        setError(analysis.error_message ?? 'Analysis failed. Please try again.')
-        setStep('error')
-        return
-      }
-
-      // Staleness check
-      const age = Date.now() - new Date(analysis.created_at).getTime()
-      if (age > STALE_MS && analysis.status === 'processing') {
-        clearInterval(interval)
-        // Update DB to failed
-        await supabase.from('analyses').update({ status: 'failed', error_message: 'Analysis timed out' }).eq('id', analysisId)
-        setError('Analysis took too long. Please try again.')
-        setStep('error')
-      }
-    }, POLL_INTERVAL_MS)
-
-    return () => clearInterval(interval)
-  }, [step, analysisId, navigate])
 
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(e: FormEvent) {
@@ -88,13 +37,12 @@ export function AnalyzePage() {
     const speakerMatches = [...transcript.matchAll(/^([A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?)\s*:/gm)]
     const detectedSpeakers = [...new Set(speakerMatches.map(m => m[1]))]
 
-    // Try auto-match first
     const matchResult = detectedSpeakers.length > 0
       ? matchSpeakerToUser(profile.full_name, detectedSpeakers)
       : { matched: false as const, candidates: [] }
 
     if (!matchResult.matched && matchResult.candidates.length > 0) {
-      // Need user to identify themselves — store pending state
+      // Need user to identify themselves — store pending state and show modal
       pendingTranscript.current = transcript
       pendingMeetingName.current = meetingName
       pendingMeetingDate.current = meetingDate
@@ -115,65 +63,38 @@ export function AnalyzePage() {
   async function startAnalysis(selfSpeakerName: string | null) {
     if (!user) return
 
-    const res = await fetch('/.netlify/functions/analyze-start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        transcript: pendingTranscript.current || transcript,
-        meeting_name: pendingMeetingName.current || meetingName,
-        meeting_date: pendingMeetingDate.current || meetingDate,
-        user_id: user.id,
-        self_speaker_name: selfSpeakerName,
-      }),
-    })
+    setStep('processing')
 
-    const data: AnalyzeStartResponse = await res.json()
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'full',
+          transcript: pendingTranscript.current || transcript,
+          meeting_name: pendingMeetingName.current || meetingName,
+          meeting_date: pendingMeetingDate.current || meetingDate,
+          user_id: user.id,
+          self_speaker_name: selfSpeakerName,
+        }),
+      })
 
-    if (!data.success || !data.analysisId) {
-      setError(data.error ?? 'Could not start analysis. Please try again.')
+      const data: AnalyzeStartResponse = await res.json()
+
+      if (!data.success || !data.analysisId) {
+        setError(data.error ?? 'Could not complete analysis. Please try again.')
+        setStep('error')
+        return
+      }
+
+      // Navigate directly — the function only returns after Claude is done
+      navigate(`/results/${data.analysisId}`)
+
+    } catch (err) {
+      console.error('[AnalyzePage] fetch error:', err)
+      setError('Network error — please check your connection and try again.')
       setStep('error')
-      return
     }
-
-    setAnalysisId(data.analysisId)
-    setPollCount(0)
-    setStep('processing')
-  }
-
-  async function handleRetry() {
-    if (!analysisId) { setStep('form'); return }
-
-    // Re-trigger the background function for the same analysis ID
-    setError(null)
-    setStep('submitting')
-
-    const { data } = await supabase
-      .from('analyses')
-      .select('*')
-      .eq('id', analysisId)
-      .single()
-
-    if (!data) { setStep('form'); return }
-
-    // Reset status to processing
-    await supabase.from('analyses')
-      .update({ status: 'processing', error_message: null })
-      .eq('id', analysisId)
-
-    // Re-fire background function
-    await fetch('/.netlify/functions/analyze-start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        analysis_id: analysisId,
-        transcript: data.transcript_preview, // note: only preview stored, limited retry fidelity
-        meeting_name: data.meeting_name,
-        meeting_date: data.meeting_date,
-      }),
-    })
-
-    setPollCount(0)
-    setStep('processing')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -199,14 +120,9 @@ export function AnalyzePage() {
             </h2>
             <p className="text-scp-gray text-sm max-w-sm">
               {step === 'submitting'
-                ? 'Setting up your analysis job...'
+                ? 'Setting up your analysis...'
                 : 'Analyzing speaker patterns, topic coverage, and communication effectiveness. This usually takes 20–40 seconds.'}
             </p>
-            {step === 'processing' && pollCount > 0 && (
-              <p className="text-scp-gray-mid text-xs mt-4">
-                Checking for results... ({pollCount * 2}s elapsed)
-              </p>
-            )}
           </div>
         )}
 
@@ -218,16 +134,12 @@ export function AnalyzePage() {
             </div>
             <h2 className="text-scp-navy font-bold text-xl mb-2">Analysis Failed</h2>
             <p className="text-scp-gray text-sm max-w-sm mb-6">{error}</p>
-            <div className="flex gap-3">
-              {analysisId && (
-                <button onClick={handleRetry} className="btn-primary">
-                  Retry Analysis
-                </button>
-              )}
-              <button onClick={() => { setStep('form'); setAnalysisId(null) }} className="btn-ghost">
-                Start Over
-              </button>
-            </div>
+            <button
+              onClick={() => { setStep('form'); setError(null) }}
+              className="btn-primary"
+            >
+              Try Again
+            </button>
           </div>
         )}
 
@@ -285,7 +197,7 @@ export function AnalyzePage() {
                   onChange={e => setTranscript(e.target.value)}
                   className="input-field resize-none font-mono text-sm"
                   rows={14}
-                  placeholder={`Zach Roberts: Good morning everyone, let's get started with the sprint review...\n\nSarah M: Thanks Zach. I wanted to cover the MuleSoft ticket status first...\n\nZach Roberts: Sure, go ahead Sarah.`}
+                  placeholder={"Zach Roberts: Good morning everyone, let's get started with the sprint review...\n\nSarah M: Thanks Zach. I wanted to cover the MuleSoft ticket status first...\n\nZach Roberts: Sure, go ahead Sarah."}
                   required
                 />
                 <p className="text-xs text-scp-gray-mid mt-1">
