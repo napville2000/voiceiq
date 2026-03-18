@@ -1,9 +1,15 @@
+import { useState } from 'react'
+
 interface SpeakerIdentityModalProps {
   candidates: string[]
   onSelect: (name: string | null) => void
 }
 
 export function SpeakerIdentityModal({ candidates, onSelect }: SpeakerIdentityModalProps) {
+  const [manualName, setManualName] = useState('')
+
+  const noSpeakersDetected = candidates.length === 0
+
   return (
     <>
       {/* Backdrop */}
@@ -13,12 +19,14 @@ export function SpeakerIdentityModal({ candidates, onSelect }: SpeakerIdentityMo
           <div className="bg-scp-navy px-6 py-5">
             <h2 className="text-white font-bold text-lg">Which speaker is you?</h2>
             <p className="text-white/60 text-sm mt-1">
-              VoiceIQ tracks your personal scores over time. Select your name so we know which data to attribute to you.
+              {noSpeakersDetected
+                ? "VoiceIQ couldn't detect speaker names in this transcript. Enter your name exactly as it appears so your scores are tracked correctly."
+                : "VoiceIQ tracks your personal scores over time. Select your name so we know which data to attribute to you."}
             </p>
           </div>
 
-          {/* Speaker buttons */}
           <div className="px-6 py-5 space-y-3">
+            {/* Detected speaker buttons */}
             {candidates.map(name => (
               <button
                 key={name}
@@ -33,6 +41,27 @@ export function SpeakerIdentityModal({ candidates, onSelect }: SpeakerIdentityMo
                 </div>
               </button>
             ))}
+
+            {/* Manual name entry — always shown if no candidates detected */}
+            {noSpeakersDetected && (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={manualName}
+                  onChange={e => setManualName(e.target.value)}
+                  className="input-field"
+                  placeholder="Your name as it appears in the transcript"
+                  autoFocus
+                />
+                <button
+                  onClick={() => manualName.trim() && onSelect(manualName.trim())}
+                  disabled={!manualName.trim()}
+                  className="btn-primary w-full"
+                >
+                  That's me
+                </button>
+              </div>
+            )}
 
             <div className="border-t border-scp-gray-warm pt-3">
               <button

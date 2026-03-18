@@ -58,9 +58,17 @@ Return plain text only — no markdown, no JSON, no headers.`
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+function detectSpeakers(transcript: string): string[] {
+  const speakers = new Set<string>()
+  for (const m of transcript.matchAll(/^\d+\s+"([^"]+)"\s+\(\d+\)$/gm)) speakers.add(m[1])
+  for (const m of transcript.matchAll(/^[ \t]*\[?([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+){0,3})\]?\s*(?:\([^)]*\))?\s*:/gm)) speakers.add(m[1])
+  for (const m of transcript.matchAll(/^([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+){0,3})\s{2,}\d+:\d+$/gm)) speakers.add(m[1])
+  for (const m of transcript.matchAll(/^\[([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+){0,3})\]/gm)) speakers.add(m[1])
+  return [...speakers]
+}
+
 function getMockResult(meetingName: string, transcript: string) {
-  const speakerMatches = [...transcript.matchAll(/^([A-Z][a-z]+(?: [A-Z][a-z]+)?)\s*:/gm)]
-  const names = [...new Set(speakerMatches.map(m => m[1]))].slice(0, 4)
+  const names = detectSpeakers(transcript).slice(0, 4)
   const speakers = names.length >= 2 ? names : ['Zach Roberts', 'Sarah M']
   return {
     speakers: speakers.map((name, i) => ({

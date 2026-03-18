@@ -9,6 +9,29 @@ import type { AnalyzeStartResponse } from '../types'
 
 type Step = 'form' | 'submitting' | 'identity' | 'processing' | 'error'
 
+function detectSpeakers(transcript: string): string[] {
+  const speakers = new Set<string>()
+
+  // Format 1: WebVTT — 123 "Speaker Name" (numericid)
+  for (const m of transcript.matchAll(/^\d+\s+"([^"]+)"\s+\(\d+\)$/gm)) {
+    speakers.add(m[1])
+  }
+  // Format 2: Name: or [Name]: — standard, Zoom with timestamp, manual
+  for (const m of transcript.matchAll(/^[ \t]*\[?([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+){0,3})\]?\s*(?:\([^)]*\))?\s*:/gm)) {
+    speakers.add(m[1])
+  }
+  // Format 3: Otter.ai — "Name  0:00" on its own line
+  for (const m of transcript.matchAll(/^([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+){0,3})\s{2,}\d+:\d+$/gm)) {
+    speakers.add(m[1])
+  }
+  // Format 4: Teams — [Name] at start of line
+  for (const m of transcript.matchAll(/^\[([A-Z][a-zA-Z'-]+(?: [A-Z][a-zA-Z'-]+){0,3})\]/gm)) {
+    speakers.add(m[1])
+  }
+
+  return [...speakers]
+}
+
 export function AnalyzePage() {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
@@ -33,25 +56,25 @@ export function AnalyzePage() {
     setError(null)
     setStep('submitting')
 
-    // Detect speakers from transcript for identity matching
-    const speakerMatches = [...transcript.matchAll(/^([A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?)\s*:/gm)]
-    const detectedSpeakers = [...new Set(speakerMatches.map(m => m[1]))]
+    // Detect speakers — handles WebVTT, standard Name:, Otter.ai, Teams bracket formats
+    const detectedSpeakers = detectSpeakers(transcript)
 
     const matchResult = detectedSpeakers.length > 0
       ? matchSpeakerToUser(profile.full_name, detectedSpeakers)
       : { matched: false as const, candidates: [] }
 
-    if (!matchResult.matched && matchResult.candidates.length > 0) {
-      // Need user to identify themselves — store pending state and show modal
+    if (!matchResult.matched) {
+      // Auto-match failed — always show modal so user can identify themselves
+      // (never silently save as observer — that should be an explicit choice)
       pendingTranscript.current = transcript
       pendingMeetingName.current = meetingName
       pendingMeetingDate.current = meetingDate
-      setPendingSpeakers(matchResult.candidates)
+      setPendingSpeakers(matchResult.candidates)  // may be empty if no speakers detected
       setStep('identity')
       return
     }
 
-    const selfSpeakerName = matchResult.matched ? matchResult.speakerName : null
+    const selfSpeakerName = matchResult.speakerName
     await startAnalysis(selfSpeakerName)
   }
 
