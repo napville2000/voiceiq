@@ -93,7 +93,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
   }
 
-  const body = req.body as Record<string, unknown>
+  // @vercel/node does not auto-parse JSON bodies — handle both parsed object and raw string
+  let body: Record<string, unknown>
+  try {
+    body = typeof req.body === 'object' && req.body !== null
+      ? req.body as Record<string, unknown>
+      : JSON.parse(typeof req.body === 'string' ? req.body : '{}')
+  } catch {
+    return res.status(400).json({ success: false, error: 'Invalid JSON body' })
+  }
+
   const mode = body.mode as string | undefined
 
   // ── Mode: explain ──────────────────────────────────────────────────────────
