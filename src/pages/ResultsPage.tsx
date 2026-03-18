@@ -122,17 +122,48 @@ export function ResultsPage() {
     )
   }
 
-  if (!analysis || !analysis.scores) {
+  if (!analysis) {
     return (
       <div className="min-h-screen bg-scp-navy-tint">
         <NavBar />
         <main className="max-w-4xl mx-auto px-4 py-16 text-center">
-          <p className="text-scp-navy font-bold text-lg mb-2">
-            {analysis?.status === 'processing' ? 'Analysis still in progress...' : 'Analysis not found'}
+          <p className="text-scp-navy font-bold text-lg mb-2">Analysis not found</p>
+          <p className="text-scp-gray text-sm mb-4">This analysis may have been deleted or the link is invalid.</p>
+          <Link to="/history" className="btn-ghost inline-block mt-4 mr-3">View History</Link>
+          <Link to="/analyze" className="btn-primary inline-block mt-4">New Analysis</Link>
+        </main>
+      </div>
+    )
+  }
+
+  if (analysis.status === 'failed') {
+    return (
+      <div className="min-h-screen bg-scp-navy-tint">
+        <NavBar />
+        <main className="max-w-4xl mx-auto px-4 py-16 text-center">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-5">
+            <span className="text-red-500 text-2xl">!</span>
+          </div>
+          <h2 className="text-scp-navy font-bold text-xl mb-2">Analysis Failed</h2>
+          <p className="text-scp-gray text-sm max-w-sm mx-auto mb-6">
+            {analysis.error_message ?? 'Something went wrong during analysis.'}
           </p>
-          {analysis?.status === 'processing' && (
-            <p className="text-scp-gray text-sm mb-4">Check back in a moment — Claude is still working on this.</p>
-          )}
+          <p className="text-scp-gray-mid text-xs mb-6">{analysis.meeting_name}</p>
+          <Link to="/analyze" className="btn-primary inline-block mr-3">Try Again</Link>
+          <Link to="/history" className="btn-ghost inline-block">View History</Link>
+        </main>
+      </div>
+    )
+  }
+
+  if (analysis.status === 'processing' || !analysis.scores) {
+    return (
+      <div className="min-h-screen bg-scp-navy-tint">
+        <NavBar />
+        <main className="max-w-4xl mx-auto px-4 py-16 text-center">
+          <div className="w-10 h-10 border-4 border-scp-green border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-scp-navy font-bold text-lg mb-2">Analysis still in progress...</p>
+          <p className="text-scp-gray text-sm mb-4">Claude is still working on this. Check back in a moment.</p>
           <Link to="/history" className="btn-ghost inline-block mt-4 mr-3">View History</Link>
           <Link to="/analyze" className="btn-primary inline-block mt-4">New Analysis</Link>
         </main>
